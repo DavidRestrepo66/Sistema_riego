@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta charset="utf-8">
+
+    <title>Detalle del Sensor</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='styles.css') }}">
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h2>Gráfico de {{ tipo }}</h2>
+
+        <canvas id="grafico"></canvas>
+
+        <br>
+
+        <a href="{{ url_for('views.graficos') }}"
+           class="btn">
+            ⬅ Volver
+        </a>
+
+    </div>
+
+    <script>
+
+        const tipo = "{{ tipo }}";
+
+        async function cargarGrafico() {
+
+            try {
+
+                const response =
+                    await fetch('/api/datos');
+
+                const datos =
+                    await response.json();
+
+                const labels =
+                    datos.map(d => d.fecha);
+
+                const valores =
+                    datos.map(d => d[tipo]);
+
+                const ctx =
+                    document.getElementById('grafico');
+
+                new Chart(ctx, {
+
+                    type: 'line',
+
+                    data: {
+
+                        labels: labels.reverse(),
+
+                        datasets: [{
+
+                            label: tipo,
+
+                            data: valores.reverse(),
+
+                            borderWidth: 2,
+
+                            tension: 0.3,
+
+                            fill: false
+
+                        }]
+
+                    },
+
+                    options: {
+
+                        responsive: true,
+
+                        plugins: {
+
+                            legend: {
+
+                                display: true
+
+                            }
+
+                        },
+
+                        scales: {
+
+                            y: {
+
+                                beginAtZero: false
+
+                            }
+
+                        }
+
+                    }
+
+                });
+
+            } catch (error) {
+
+                console.error(
+                    'Error cargando gráfico:',
+                    error
+                );
+
+            }
+
+        }
+
+        cargarGrafico();
+
+    </script>
+
+</body>
+
+</html>

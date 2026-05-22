@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Gráficos de Sensores</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0"></script>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='styles.css') }}">
+
+    <style>
+
+        body {
+
+            font-family: "Segoe UI", Arial, sans-serif;
+
+            background: linear-gradient(
+                180deg,
+                #eaf3fa,
+                #fdfdfd
+            );
+
+            margin: 0;
+
+            padding: 0;
+        }
+
+        h1 {
+
+            text-align: center;
+
+            padding: 25px 0;
+
+            font-size: 28px;
+
+            background: #007bff;
+
+            color: white;
+
+            margin: 0 0 20px 0;
+
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .chart-container {
+
+            width: 90%;
+
+            max-width: 900px;
+
+            margin: 20px auto;
+
+            background: #fff;
+
+            border-radius: 12px;
+
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+
+            padding: 25px;
+
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .chart-container:hover {
+
+            transform: scale(1.03);
+
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+        }
+
+        canvas {
+
+            width: 100%;
+
+            height: 350px;
+        }
+
+        .btn {
+
+            display: inline-block;
+
+            background-color: #007bff;
+
+            color: white;
+
+            padding: 12px 24px;
+
+            text-decoration: none;
+
+            border-radius: 8px;
+
+            transition: background 0.2s;
+
+            cursor: pointer;
+
+            margin-top: 10px;
+
+            border: none;
+        }
+
+        .btn:hover {
+
+            background-color: #0056b3;
+        }
+
+        .volver {
+
+            text-align: center;
+
+            margin: 30px 0 40px 0;
+        }
+
+        #modalGrafico {
+
+            display: none;
+
+            position: fixed;
+
+            top: 0;
+            left: 0;
+
+            width: 100%;
+            height: 100%;
+
+            background: rgba(0,0,0,0.6);
+
+            justify-content: center;
+
+            align-items: center;
+
+            z-index: 1000;
+        }
+
+        #modalGrafico .contenido {
+
+            background: #fff;
+
+            padding: 20px;
+
+            border-radius: 12px;
+
+            width: 90%;
+
+            max-width: 1000px;
+
+            position: relative;
+        }
+
+        #modalGrafico #cerrarModal {
+
+            position: absolute;
+
+            top: 10px;
+            right: 15px;
+
+            font-size: 24px;
+
+            cursor: pointer;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <h1>📊 Gráficos de Lecturas de Sensores</h1>
+
+    <!-- Temperatura -->
+
+    <div class="chart-container">
+
+        <h3>🌡️ Temperatura (°C)</h3>
+
+        <canvas id="graficoTemp"></canvas>
+
+        <button class="btn"
+                onclick="resetZoom('graficoTemp')">
+
+            🔄 Resetear Zoom
+
+        </button>
+
+    </div>
+
+    <!-- Humedad -->
+
+    <div class="chart-container">
+
+        <h3>💧 Humedad (%)</h3>
+
+        <canvas id="graficoHumedad"></canvas>
+
+        <button class="btn"
+                onclick="resetZoom('graficoHumedad')">
+
+            🔄 Resetear Zoom
+
+        </button>
+
+    </div>
+
+    <!-- Presión -->
+
+    <div class="chart-container">
+
+        <h3>🌬️ Presión (hPa)</h3>
+
+        <canvas id="graficoPresion"></canvas>
+
+        <button class="btn"
+                onclick="resetZoom('graficoPresion')">
+
+            🔄 Resetear Zoom
+
+        </button>
+
+    </div>
+
+    <!-- Luz -->
+
+    <div class="chart-container">
+
+        <h3>💡 Intensidad de Luz (lux)</h3>
+
+        <canvas id="graficoLuz"></canvas>
+
+        <button class="btn"
+                onclick="resetZoom('graficoLuz')">
+
+            🔄 Resetear Zoom
+
+        </button>
+
+    </div>
+
+    <!-- Volver -->
+
+    <div class="volver">
+
+        <a href="{{ url_for('views.dashboard') }}"
+           class="btn">
+
+            ⬅ Volver al panel
+
+        </a>
+
+    </div>
+
+    <!-- Modal -->
+
+    <div id="modalGrafico">
+
+        <div class="contenido">
+
+            <span id="cerrarModal">&times;</span>
+
+            <canvas id="graficoAmpliado"
+                    style="height:500px;">
+            </canvas>
+
+            <button class="btn"
+                    id="resetZoomAmpliado">
+
+                🔄 Resetear Zoom
+
+            </button>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        let fechas = [];
+
+        let temp_dht = [];
+
+        let humedad = [];
+
+        let temp_bmp = [];
+
+        let presion = [];
+
+        let luz = [];
+
+        async function cargarDatos() {
+
+            try {
+
+                const res =
+                    await fetch('/api/datos');
+
+                if (!res.ok) {
+
+                    console.error(
+                        'Error al obtener datos'
+                    );
+
+                    return;
+                }
+
+                const data =
+                    await res.json();
+
+                // ✅ MONGO DB
+
+                fechas = data.map(
+                    row => row.fecha
+                );
+
+                temp_dht = data.map(
+                    row => row.temp_dht
+                );
+
+                humedad = data.map(
+                    row => row.humedad
+                );
+
+                temp_bmp = data.map(
+                    row => row.temp_bmp
+                );
+
+                presion = data.map(
+                    row => row.presion
+                );
+
+                luz = data.map(
+                    row => row.luz
+                );
+
+                crearGrafico(
+                    'graficoTemp',
+                    'Temperatura (°C)',
+                    fechas,
+                    temp_dht,
+                    'rgba(255,99,132,0.8)'
+                );
+
+                crearGrafico(
+                    'graficoHumedad',
+                    'Humedad (%)',
+                    fechas,
+                    humedad,
+                    'rgba(54,162,235,0.8)'
+                );
+
+                crearGrafico(
+                    'graficoPresion',
+                    'Presión (hPa)',
+                    fechas,
+                    presion,
+                    'rgba(75,192,192,0.8)'
+                );
+
+                crearGrafico(
+                    'graficoLuz',
+                    'Luz (lux)',
+                    fechas,
+                    luz,
+                    'rgba(255,206,86,0.8)'
+                );
+
+                document.getElementById(
+                    'graficoTemp'
+                ).onclick = () =>
+                    abrirModal(
+                        'Temperatura (°C)',
+                        fechas,
+                        temp_dht,
+                        'rgba(255,99,132,0.8)'
+                    );
+
+                document.getElementById(
+                    'graficoHumedad'
+                ).onclick = () =>
+                    abrirModal(
+                        'Humedad (%)',
+                        fechas,
+                        humedad,
+                        'rgba(54,162,235,0.8)'
+                    );
+
+                document.getElementById(
+                    'graficoPresion'
+                ).onclick = () =>
+                    abrirModal(
+                        'Presión (hPa)',
+                        fechas,
+                        presion,
+                        'rgba(75,192,192,0.8)'
+                    );
+
+                document.getElementById(
+                    'graficoLuz'
+                ).onclick = () =>
+                    abrirModal(
+                        'Luz (lux)',
+                        fechas,
+                        luz,
+                        'rgba(255,206,86,0.8)'
+                    );
+
+            } catch (error) {
+
+                console.error(
+                    'Error cargando gráficos:',
+                    error
+                );
+
+            }
+
+        }
+
+        function crearGrafico(
+            id,
+            etiqueta,
+            etiquetas,
+            datos,
+            color
+        ) {
+
+            const ctx =
+                document.getElementById(id);
+
+            new Chart(ctx, {
+
+                type: 'line',
+
+                data: {
+
+                    labels: [...etiquetas].reverse(),
+
+                    datasets: [{
+
+                        label: etiqueta,
+
+                        data: [...datos].reverse(),
+
+                        borderColor: color,
+
+                        backgroundColor:
+                            color.replace('0.8', '0.2'),
+
+                        borderWidth: 2,
+
+                        tension: 0.3,
+
+                        fill: true,
+
+                        pointRadius: 3,
+
+                        pointHoverRadius: 6
+
+                    }]
+
+                },
+
+                options: {
+
+                    responsive: true,
+
+                    plugins: {
+
+                        legend: {
+
+                            display: true,
+
+                            position: 'top'
+                        },
+
+                        tooltip: {
+
+                            enabled: true,
+
+                            mode: 'nearest',
+
+                            callbacks: {
+
+                                label: function(context) {
+
+                                    return `Valor: ${context.parsed.y.toFixed(2)}`;
+
+                                }
+
+                            }
+
+                        },
+
+                        zoom: {
+
+                            zoom: {
+
+                                wheel: {
+                                    enabled: true
+                                },
+
+                                pinch: {
+                                    enabled: true
+                                },
+
+                                mode: 'x'
+
+                            },
+
+                            pan: {
+
+                                enabled: true,
+
+                                mode: 'x'
+                            }
+
+                        }
+
+                    },
+
+                    scales: {
+
+                        x: {
+
+                            ticks: {
+                                color: '#555'
+                            },
+
+                            grid: {
+                                color: 'rgba(200,200,200,0.2)'
+                            }
+
+                        },
+
+                        y: {
+
+                            beginAtZero: false,
+
+                            ticks: {
+                                color: '#555'
+                            },
+
+                            grid: {
+                                color: 'rgba(200,200,200,0.2)'
+                            },
+
+                            suggestedMin:
+                                Math.min(...datos) - 1,
+
+                            suggestedMax:
+                                Math.max(...datos) + 1
+                        }
+
+                    }
+
+                }
+
+            });
+
+        }
+
+        function resetZoom(id) {
+
+            const chart =
+                Chart.getChart(id);
+
+            if (chart) {
+
+                chart.resetZoom();
+            }
+
+        }
+
+        let modal =
+            document.getElementById('modalGrafico');
+
+        let cerrar =
+            document.getElementById('cerrarModal');
+
+        let chartAmpliado = null;
+
+        function abrirModal(
+            etiqueta,
+            etiquetas,
+            datos,
+            color
+        ) {
+
+            modal.style.display = 'flex';
+
+            if (chartAmpliado) {
+
+                chartAmpliado.destroy();
+            }
+
+            const ctx =
+                document.getElementById('graficoAmpliado');
+
+            chartAmpliado = new Chart(ctx, {
+
+                type: 'line',
+
+                data: {
+
+                    labels: [...etiquetas].reverse(),
+
+                    datasets: [{
+
+                        label: etiqueta,
+
+                        data: [...datos].reverse(),
+
+                        borderColor: color,
+
+                        backgroundColor:
+                            color.replace('0.8', '0.2'),
+
+                        borderWidth: 2,
+
+                        tension: 0.3,
+
+                        fill: true,
+
+                        pointRadius: 4,
+
+                        pointHoverRadius: 8
+
+                    }]
+
+                },
+
+                options: {
+
+                    responsive: true,
+
+                    plugins: {
+
+                        legend: {
+
+                            display: true,
+
+                            position: 'top'
+                        },
+
+                        zoom: {
+
+                            zoom: {
+
+                                wheel: {
+                                    enabled: true
+                                },
+
+                                pinch: {
+                                    enabled: true
+                                },
+
+                                mode: 'x'
+
+                            },
+
+                            pan: {
+
+                                enabled: true,
+
+                                mode: 'x'
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            });
+
+        }
+
+        cerrar.onclick = function() {
+
+            modal.style.display = 'none';
+
+            if (chartAmpliado) {
+
+                chartAmpliado.destroy();
+            }
+
+        };
+
+        document.getElementById(
+            'resetZoomAmpliado'
+        ).onclick = function() {
+
+            if (chartAmpliado) {
+
+                chartAmpliado.resetZoom();
+            }
+
+        };
+
+        window.onclick = function(e) {
+
+            if (e.target == modal) {
+
+                modal.style.display = 'none';
+
+                if (chartAmpliado) {
+
+                    chartAmpliado.destroy();
+                }
+
+            }
+
+        };
+
+        cargarDatos();
+
+    </script>
+
+</body>
+
+</html>

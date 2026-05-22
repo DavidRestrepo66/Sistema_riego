@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Dashboard de Sensores</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h2>Datos de Sensores</h2>
+
+        <table id="tabla">
+
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Temp DHT</th>
+                    <th>Humedad</th>
+                    <th>Temp BMP</th>
+                    <th>Presión (hPa)</th>
+                    <th>Luz (lux)</th>
+                </tr>
+            </thead>
+
+            <tbody></tbody>
+
+        </table>
+
+        <button onclick="window.location.href='/logout'">
+            Cerrar sesión
+        </button>
+
+        <a href="{{ url_for('views.graficos') }}"
+           class="btn">
+            📈 Ver Gráficos
+        </a>
+
+    </div>
+
+    <script>
+
+        async function cargarDatos() {
+
+            try {
+
+                const res = await fetch('/api/datos');
+
+                if (!res.ok) {
+                    console.error(
+                        'Error en /api/datos',
+                        res.status
+                    );
+                    return;
+                }
+
+                const datos = await res.json();
+
+                const tbody =
+                    document.querySelector('#tabla tbody');
+
+                tbody.innerHTML = '';
+
+                datos.forEach(fila => {
+
+                    const tr =
+                        document.createElement('tr');
+
+                    tr.innerHTML = `
+                        <td>${fila.fecha}</td>
+                        <td>${fila.temp_dht}</td>
+                        <td>${fila.humedad}</td>
+                        <td>${fila.temp_bmp}</td>
+                        <td>${fila.presion}</td>
+                        <td>${fila.luz}</td>
+                    `;
+
+                    tbody.appendChild(tr);
+
+                });
+
+            } catch (err) {
+
+                console.error(
+                    'Error al cargar datos:',
+                    err
+                );
+
+            }
+
+        }
+
+        cargarDatos();
+
+        setInterval(cargarDatos, 5000);
+
+    </script>
+
+</body>
+
+</html>
