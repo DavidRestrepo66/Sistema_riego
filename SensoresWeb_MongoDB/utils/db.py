@@ -1,3 +1,5 @@
+import logging
+
 from pymongo import MongoClient
 
 from config import Config
@@ -18,4 +20,4 @@ configuraciones_collection = db["configuraciones"]
 
 alertas_collection = db["alertas"]
 
-print("MongoDB Atlas conectado correctamente")
+logging.getLogger(__name__).info("MongoDB Atlas conectado correctamente")

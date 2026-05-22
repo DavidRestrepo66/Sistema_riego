@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from utils.db import (
     alertas_collection,
     configuraciones_collection
@@ -20,6 +22,8 @@ class MongoExtraRepository:
 
             doc["_id"] = str(doc["_id"])
 
+            doc["fecha"] = doc["fecha"].strftime("%Y-%m-%d %H:%M") if isinstance(doc.get("fecha"), datetime) else str(doc.get("fecha", ""))
+
             resultado.append(doc)
 
         return resultado
@@ -27,7 +31,7 @@ class MongoExtraRepository:
     @staticmethod
     def get_configuraciones():
 
-        documentos = configuraciones_collection.find()
+        documentos = configuraciones_collection.find().limit(100)
 
         resultado = []
 
