@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Análisis SQL Server</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='styles.css') }}">
+
+    <style>
+        .seccion {
+            margin-bottom: 2rem;
+        }
+
+        .resultado-clasificacion {
+            margin-top: 0.8rem;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .fila-controles {
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h2>Análisis SQL Server</h2>
+
+        <a href="/dashboard" class="btn">&#8592; Volver al Dashboard</a>
+
+        <!-- -------------------------------------------------- -->
+        <!-- Sección 1: Resumen por Zona                         -->
+        <!-- -------------------------------------------------- -->
+        <div class="seccion">
+
+            <h3>Resumen por Zona</h3>
+
+            <table id="tabla-resumen">
+
+                <thead>
+                    <tr>
+                        <th>Zona</th>
+                        <th>Dispositivo</th>
+                        <th>Total Lecturas</th>
+                        <th>Prom. Temperatura</th>
+                        <th>Prom. Humedad</th>
+                        <th>Prom. Presión</th>
+                        <th>Prom. Luz</th>
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+
+            </table>
+
+        </div>
+
+        <!-- -------------------------------------------------- -->
+        <!-- Sección 2: Clasificar Humedad                       -->
+        <!-- -------------------------------------------------- -->
+        <div class="seccion">
+
+            <h3>Clasificar Humedad</h3>
+
+            <div class="fila-controles">
+
+                <input type="number"
+                       id="input-humedad"
+                       placeholder="Ej. 55.0"
+                       step="0.1"
+                       min="0"
+                       max="100">
+
+                <button onclick="clasificarHumedad()">
+                    Clasificar
+                </button>
+
+            </div>
+
+            <div id="resultado-humedad" class="resultado-clasificacion"></div>
+
+        </div>
+
+        <!-- -------------------------------------------------- -->
+        <!-- Sección 3: Lecturas por Zona                        -->
+        <!-- -------------------------------------------------- -->
+        <div class="seccion">
+
+            <h3>Lecturas por Zona</h3>
+
+            <div class="fila-controles">
+
+                <select id="select-zona">
+                    <option value="1">Zona 1</option>
+                    <option value="2">Zona 2</option>
+                    <option value="3">Zona 3</option>
+                </select>
+
+                <button onclick="cargarLecturasZona()">
+                    Cargar Lecturas
+                </button>
+
+            </div>
+
+            <table id="tabla-lecturas">
+
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Dispositivo</th>
+                        <th>Temp DHT</th>
+                        <th>Humedad</th>
+                        <th>Temp BMP</th>
+                        <th>Presión</th>
+                        <th>Luz</th>
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        // --------------------------------------------------
+        // Cargar resumen al iniciar la página
+        // --------------------------------------------------
+        async function cargarResumen() {
+
+            try {
+
+                const res = await fetch('/api/sql/resumen');
+
+                if (!res.ok) {
+                    console.error('Error en /api/sql/resumen', res.status);
+                    return;
+                }
+
+                const datos = await res.json();
+
+                const tbody = document.querySelector(
+                    '#tabla-resumen tbody'
+                );
+
+                tbody.innerHTML = '';
+
+                datos.forEach(fila => {
+
+                    const tr = document.createElement('tr');
+
+                    tr.innerHTML = `
+                        <td>${fila.zona}</td>
+                        <td>${fila.dispositivo}</td>
+                        <td>${fila.total_lecturas}</td>
+                        <td>${fila.prom_temp}</td>
+                        <td>${fila.prom_humedad}</td>
+                        <td>${fila.prom_presion}</td>
+                        <td>${fila.prom_luz}</td>
+                    `;
+
+                    tbody.appendChild(tr);
+
+                });
+
+            } catch (err) {
+
+                console.error('Error al cargar resumen:', err);
+
+            }
+
+        }
+
+        // --------------------------------------------------
+        // Clasificar humedad ingresada por el usuario
+        // --------------------------------------------------
+        async function clasificarHumedad() {
+
+            const valor = document.getElementById('input-humedad').value;
+
+            if (valor === '') {
+                alert('Ingresa un valor de humedad.');
+                return;
+            }
+
+            try {
+
+                const res = await fetch(
+                    `/api/sql/humedad/${parseFloat(valor)}`
+                );
+
+                const data = await res.json();
+
+                const div = document.getElementById('resultado-humedad');
+
+                if (data.error) {
+                    div.textContent = 'Error: ' + data.error;
+                } else {
+                    div.textContent =
+                        `Humedad ${data.valor}% → ${data.clasificacion}`;
+                }
+
+            } catch (err) {
+
+                console.error('Error al clasificar humedad:', err);
+
+            }
+
+        }
+
+        // --------------------------------------------------
+        // Cargar lecturas de la zona seleccionada
+        // --------------------------------------------------
+        async function cargarLecturasZona() {
+
+            const idZona = document.getElementById('select-zona').value;
+
+            try {
+
+                const res = await fetch(`/api/sql/zona/${idZona}`);
+
+                if (!res.ok) {
+                    console.error('Error en /api/sql/zona', res.status);
+                    return;
+                }
+
+                const datos = await res.json();
+
+                const tbody = document.querySelector(
+                    '#tabla-lecturas tbody'
+                );
+
+                tbody.innerHTML = '';
+
+                if (datos.error) {
+                    tbody.innerHTML =
+                        `<tr><td colspan="7">Error: ${datos.error}</td></tr>`;
+                    return;
+                }
+
+                datos.forEach(fila => {
+
+                    const tr = document.createElement('tr');
+
+                    tr.innerHTML = `
+                        <td>${fila.fecha}</td>
+                        <td>${fila.dispositivo}</td>
+                        <td>${fila.temp_dht}</td>
+                        <td>${fila.humedad}</td>
+                        <td>${fila.temp_bmp}</td>
+                        <td>${fila.presion}</td>
+                        <td>${fila.luz}</td>
+                    `;
+
+                    tbody.appendChild(tr);
+
+                });
+
+            } catch (err) {
+
+                console.error('Error al cargar lecturas de zona:', err);
+
+            }
+
+        }
+
+        // Inicializar
+        cargarResumen();
+
+    </script>
+
+</body>
+
+</html>
