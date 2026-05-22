@@ -8,6 +8,9 @@ class Config:
     MONGO_URI = os.getenv("MONGO_URI")
     DATABASE_NAME = os.getenv("DATABASE_NAME", "sensores_mongo")
     ARDUINO_PORT = os.getenv("ARDUINO_PORT", "COM3")
-    BAUD_RATE = int(os.getenv("BAUD_RATE", "9600"))
-    SQL_SERVER = os.getenv("SQL_SERVER", r"FelipeSalda\SQLEXPRESS")
+    try:
+        BAUD_RATE = int(os.getenv("BAUD_RATE", "9600"))
+    except ValueError:
+        BAUD_RATE = 9600
+    SQL_SERVER = os.getenv("SQL_SERVER", r"localhost\SQLEXPRESS")
     SQL_DATABASE = os.getenv("SQL_DATABASE", "sensores")
