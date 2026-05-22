@@ -6,11 +6,13 @@ class SqlRepository:
     @staticmethod
     def get_resumen_zonas():
 
-        conn = get_sql_server_connection()
-
-        cursor = conn.cursor()
+        conn = None
+        cursor = None
 
         try:
+
+            conn = get_sql_server_connection()
+            cursor = conn.cursor()
 
             cursor.execute(
                 "SELECT * FROM dbo.vista_resumen_por_zona"
@@ -27,23 +29,23 @@ class SqlRepository:
 
             return resultado
 
-        except Exception:
-
-            raise
-
         finally:
 
-            cursor.close()
-            conn.close()
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
 
     @staticmethod
     def get_lecturas_zona(id_zona: int):
 
-        conn = get_sql_server_connection()
-
-        cursor = conn.cursor()
+        conn = None
+        cursor = None
 
         try:
+
+            conn = get_sql_server_connection()
+            cursor = conn.cursor()
 
             cursor.execute(
                 "EXEC dbo.sp_lecturas_por_zona ?",
@@ -61,23 +63,23 @@ class SqlRepository:
 
             return resultado
 
-        except Exception:
-
-            raise
-
         finally:
 
-            cursor.close()
-            conn.close()
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
 
     @staticmethod
     def clasificar_humedad(valor: float):
 
-        conn = get_sql_server_connection()
-
-        cursor = conn.cursor()
+        conn = None
+        cursor = None
 
         try:
+
+            conn = get_sql_server_connection()
+            cursor = conn.cursor()
 
             cursor.execute(
                 "SELECT dbo.fn_clasificar_humedad(?)",
@@ -88,11 +90,9 @@ class SqlRepository:
 
             return fila[0]
 
-        except Exception:
-
-            raise
-
         finally:
 
-            cursor.close()
-            conn.close()
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()

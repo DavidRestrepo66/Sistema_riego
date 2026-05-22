@@ -4,10 +4,10 @@ from services.sql_service import SqlService
 
 from utils.decorators import login_required
 
-sql_bp = Blueprint('sql', __name__)
+sql_bp = Blueprint('sql', __name__, url_prefix='/api/sql')
 
 
-@sql_bp.route('/api/sql/resumen')
+@sql_bp.route('/resumen')
 @login_required
 def api_resumen_zonas():
 
@@ -36,7 +36,7 @@ def api_resumen_zonas():
         return jsonify({"error": str(e)}), 500
 
 
-@sql_bp.route('/api/sql/zona/<int:id_zona>')
+@sql_bp.route('/zona/<int:id_zona>')
 @login_required
 def api_lecturas_zona(id_zona):
 
@@ -67,7 +67,7 @@ def api_lecturas_zona(id_zona):
         return jsonify({"error": str(e)}), 500
 
 
-@sql_bp.route('/api/sql/humedad/<float:valor>')
+@sql_bp.route('/humedad/<float:valor>')
 @login_required
 def api_clasificar_humedad(valor):
 
