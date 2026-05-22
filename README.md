@@ -55,10 +55,19 @@ aa/
 ├── schema_sensores.sql           # Script SQL Server completo
 ├── poblar_mongo.py               # Poblar colecciones MongoDB
 ├── exportar_mongo.py             # Exportar colecciones a JSON
+├── simular_arduino.py            # Simular lecturas sin Arduino físico
 ├── guardar_datos.py              # Leer Arduino y guardar en ambas BDs
 ├── mongo_export/                 # JSONs exportados (generado)
 ├── docs/
 │   └── presentacion_guion.md    # Guion para la presentación
+├── docs/                         # Documentación completa del proyecto
+│   ├── README.md                 # Índice de documentación
+│   ├── arquitectura.md           # Diagramas de arquitectura
+│   ├── bases_de_datos.md         # Diagramas ER y colecciones
+│   ├── instalacion.md            # Guía de instalación
+│   ├── api.md                    # Referencia de endpoints REST
+│   ├── manual_usuario.md         # Manual de usuario final
+│   └── presentacion_guion.md     # Guion de presentación (3 estudiantes)
 └── SensoresWeb_MongoDB/
     ├── app.py                    # Entry point de Flask
     ├── config.py                 # Configuración desde .env
@@ -209,6 +218,28 @@ python guardar_datos.py
 
 Lee datos del puerto serial del Arduino y guarda en SQL Server y MongoDB simultáneamente. Requiere Arduino conectado al puerto configurado en `ARDUINO_PORT` del `.env`.
 
+### Simular lecturas sin Arduino (recomendado para pruebas)
+
+Existen **dos formas** de generar lecturas falsas para verificar que las dos bases de datos funcionan:
+
+**Opción A — Desde la línea de comandos:**
+
+```bash
+python simular_arduino.py
+```
+
+Genera 5 lecturas aleatorias realistas y las inserta en MongoDB Atlas y SQL Server. Reporta éxito/error por cada motor de forma independiente. Editar las constantes `NUMERO_LECTURAS` y `PAUSA_SEGUNDOS` al inicio del archivo para ajustar.
+
+**Opción B — Desde la interfaz web (recomendado):**
+
+1. Inicia la app (`python app.py`) y entra a `/dashboard`
+2. En la cabecera, elige cantidad (1, 3, 5 o 10) en el selector
+3. Pulsa el botón **"Simular Arduino"**
+4. Un toast en la esquina inferior derecha confirma cuántas lecturas se guardaron en cada base
+5. La tabla y los KPIs se refrescan automáticamente
+
+Internamente el botón llama a `POST /api/simular`, que ejecuta la misma lógica que `guardar_datos.py` pero con datos generados.
+
 ---
 
 ## Endpoints de la API
@@ -217,9 +248,10 @@ Lee datos del puerto serial del Arduino y guarda en SQL Server y MongoDB simult�
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| GET | `/api/datos` | Últimas lecturas de sensores (MongoDB) |
-| GET | `/api/mongo/alertas` | Últimas 20 alertas |
-| GET | `/api/mongo/configuraciones` | Configuraciones de dispositivos |
+| GET  | `/api/datos` | Últimas lecturas de sensores (MongoDB) |
+| GET  | `/api/mongo/alertas` | Últimas 20 alertas |
+| GET  | `/api/mongo/configuraciones` | Configuraciones de dispositivos |
+| POST | `/api/simular` | Inserta N lecturas simuladas en MongoDB **y** SQL Server (body JSON: `{"n": 1..10}`) |
 
 ### Datos desde SQL Server
 
