@@ -19,6 +19,20 @@
         </svg>
         Refrescar
       </button>
+      <div class="row gap-12" style="align-items:center;">
+        <select id="sim-n" class="btn" style="cursor:pointer;padding:0 10px;" title="Cantidad de lecturas a simular">
+          <option value="1">1 lectura</option>
+          <option value="3">3 lecturas</option>
+          <option value="5">5 lecturas</option>
+          <option value="10">10 lecturas</option>
+        </select>
+        <button class="btn" id="btn-simular" title="Insertar lecturas simuladas en MongoDB y SQL Server">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/>
+          </svg>
+          Simular Arduino
+        </button>
+      </div>
       <a href="{{ url_for('views.graficos') }}" class="btn btn-primary">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="3 17 9 11 13 15 21 7"/>
@@ -156,6 +170,41 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+  #sim-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    min-width: 260px;
+    max-width: 360px;
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    font-size: 13px;
+    line-height: 1.5;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+  }
+  #sim-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  #sim-toast.ok   { background: var(--green-soft); color: var(--green-fg); border: 1px solid var(--green); }
+  #sim-toast.warn { background: var(--warn-soft);  color: var(--warn-fg);  border: 1px solid var(--warn); }
+  #sim-toast.err  { background: var(--danger-soft); color: var(--danger-fg); border: 1px solid var(--danger); }
+  .sim-row { display:flex; align-items:center; gap:8px; margin-top:4px; font-size:12px; }
+  .sim-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .sim-dot.green  { background: var(--green); }
+  .sim-dot.danger { background: var(--danger); }
+  #btn-simular[disabled] { opacity: 0.6; cursor: not-allowed; }
+</style>
+
+<div id="sim-toast"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 (function () {
@@ -287,6 +336,65 @@
 
   document.getElementById("btn-refresh").addEventListener("click", cargar);
   autoRefresh(cargar, 5000);
+
+  // ---- Simulador de Arduino ----
+  (function () {
+    const btn   = document.getElementById("btn-simular");
+    const toast = document.getElementById("sim-toast");
+    let toastTimer = null;
+
+    function showToast(html, tone) {
+      toast.className = "show " + tone;
+      toast.innerHTML = html;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 5000);
+    }
+
+    btn.addEventListener("click", async () => {
+      const n = parseInt(document.getElementById("sim-n").value, 10) || 1;
+      btn.disabled = true;
+      btn.textContent = "Simulando…";
+
+      try {
+        const res = await fetch("/api/simular", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ n }),
+        });
+        const data = await res.json();
+
+        const mongoOk  = data.mongo?.ok ?? 0;
+        const sqlOk    = data.sql?.ok   ?? 0;
+        const mongoErr = data.mongo?.error;
+        const sqlErr   = data.sql?.error;
+
+        const tone = (mongoErr && sqlErr) ? "err" : (mongoErr || sqlErr) ? "warn" : "ok";
+
+        const rowMongo = `
+          <div class="sim-row">
+            <span class="sim-dot ${mongoErr ? "danger" : "green"}"></span>
+            <span>MongoDB: ${mongoOk}/${n} guardadas${mongoErr ? " — " + mongoErr : ""}</span>
+          </div>`;
+        const rowSql = `
+          <div class="sim-row">
+            <span class="sim-dot ${sqlErr ? "danger" : "green"}"></span>
+            <span>SQL Server: ${sqlOk}/${n} guardadas${sqlErr ? " — " + sqlErr : ""}</span>
+          </div>`;
+
+        showToast(`<strong>Simulación completada</strong>${rowMongo}${rowSql}`, tone);
+
+        if (mongoOk > 0) cargar();
+
+      } catch (e) {
+        showToast(`<strong>Error al simular</strong><div class="sim-row"><span class="sim-dot danger"></span><span>${e.message}</span></div>`, "err");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg> Simular Arduino`;
+      }
+    });
+  })();
 })();
 </script>
 {% endblock %}

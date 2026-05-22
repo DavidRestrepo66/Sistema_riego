@@ -4,18 +4,24 @@ Aplicación web Flask que integra **SQL Server** y **MongoDB Atlas** para monito
 
 ---
 
+> Documentación completa en la carpeta [`/docs`](docs/README.md): arquitectura, bases de datos, API, manual de usuario y guion de presentación para 3 estudiantes.
+
+---
+
 ## Arquitectura
 
 ```
-Arduino (sensores)
-       │
-       ▼
+Arduino (sensores)                  ┌──► simular_arduino.py  (sin Arduino físico)
+       │                            │
+       ▼                            │
 guardar_datos.py ──► SQL Server (lecturas)
        │
        └──────────► MongoDB Atlas (lecturas)
 
 Navegador ◄──── Flask App ──► SQL Server  (vista / SP / función)
-                         └──► MongoDB Atlas (alertas / configuraciones)
+       │                 └──► MongoDB Atlas (alertas / configuraciones)
+       │
+       └── Botón "Simular Arduino" en el dashboard → POST /api/simular
 ```
 
 **SQL Server** maneja el modelo relacional-analítico (4 tablas, vistas, procedimientos, funciones).  
