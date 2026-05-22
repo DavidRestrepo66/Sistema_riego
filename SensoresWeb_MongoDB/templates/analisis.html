@@ -1,197 +1,264 @@
-{% extends 'base.html' %}
-{% set active = 'analisis' %}
-
-{% block title %}Análisis — Sistema de Riego{% endblock %}
-
-{% block page_title %}🔬 Análisis de Base de Datos{% endblock %}
-{% block page_subtitle %}SQL Server + MongoDB Atlas{% endblock %}
+{% extends "base.html" %}
+{% set active_nav = "analisis" %}
+{% block title %}Análisis{% endblock %}
 
 {% block content %}
 
-  <!-- Badges de fuente de datos -->
-  <div class="db-badges">
-    <span class="db-badge db-badge-sql">🗄️ SQL Server</span>
-    <span class="db-badge db-badge-mongo">🍃 MongoDB Atlas</span>
-  </div>
-
-  <!-- Sección 1: Resumen por Zona -->
-  <div class="seccion">
-    <h3>Resumen por Zona</h3>
-    <table id="tabla-resumen">
-      <thead>
-        <tr>
-          <th>Zona</th>
-          <th>Dispositivo</th>
-          <th>Total Lecturas</th>
-          <th>Prom. Temperatura</th>
-          <th>Prom. Humedad</th>
-          <th>Prom. Presión</th>
-          <th>Prom. Luz</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <!-- Sección 2: Clasificar Humedad -->
-  <div class="seccion">
-    <h3>Clasificar Humedad</h3>
-    <div class="fila-controles">
-      <input type="number" id="input-humedad" placeholder="Ej. 55.0" step="0.1" min="0" max="100">
-      <button class="btn btn-primary" onclick="clasificarHumedad()">Clasificar</button>
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">Integración SQL + Mongo</span>
+      <h1>Análisis</h1>
+      <p class="lead">Datos consolidados de SQL Server + alertas en MongoDB Atlas.</p>
     </div>
-    <div id="resultado-humedad" class="resultado-clasificacion"></div>
-  </div>
-
-  <!-- Sección 3: Lecturas por Zona -->
-  <div class="seccion">
-    <h3>Lecturas por Zona (SQL Server)</h3>
-    <div class="fila-controles">
-      <select id="select-zona">
-        <option value="1">Zona 1</option>
-        <option value="2">Zona 2</option>
-        <option value="3">Zona 3</option>
-      </select>
-      <button class="btn btn-primary" onclick="cargarLecturasZona()">Cargar Lecturas</button>
+    <div class="row gap-12">
+      <span class="badge sky"><span class="dot"></span>SQL Server</span>
+      <span class="badge terra"><span class="dot"></span>MongoDB</span>
     </div>
-    <table id="tabla-lecturas">
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Dispositivo</th>
-          <th>Temp DHT</th>
-          <th>Humedad</th>
-          <th>Temp BMP</th>
-          <th>Presión</th>
-          <th>Luz</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
   </div>
 
-  <!-- Sección 4: Log de Alertas (MongoDB) -->
-  <div class="seccion seccion-mongo">
-    <h3>
-      Log de Alertas
-      <span class="badge-mongo">desde MongoDB</span>
-    </h3>
-    <p style="color:#888;font-size:0.9rem;margin-top:0;margin-bottom:0.8rem;">
-      Últimas 20 alertas registradas en MongoDB Atlas — complementa los datos de SQL Server.
-    </p>
-    <table id="tabla-alertas">
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Zona</th>
-          <th>Variable</th>
-          <th>Valor Medido</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+  {# ---------- 1. Resumen por zona ---------- #}
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header">
+      <div>
+        <h2>Resumen por zona</h2>
+        <span class="muted text-sm mono">vista_resumen_por_zona · SQL Server</span>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Zona</th>
+            <th>Dispositivo</th>
+            <th class="num">Lecturas</th>
+            <th class="num">Prom. Temperatura</th>
+            <th class="num">Prom. Humedad</th>
+            <th class="num">Prom. Presión</th>
+            <th class="num">Prom. Luz</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-resumen">
+          <tr><td colspan="7" class="empty">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <script>
-    async function cargarResumen() {
-      try {
-        const res = await fetch('/api/sql/resumen');
-        if (!res.ok) { console.error('Error en /api/sql/resumen', res.status); return; }
-        const datos = await res.json();
-        const tbody = document.querySelector('#tabla-resumen tbody');
-        tbody.innerHTML = '';
-        datos.forEach(fila => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${fila.zona}</td>
-            <td>${fila.dispositivo}</td>
-            <td class="mono">${fila.total_lecturas}</td>
-            <td class="mono">${fila.prom_temp}</td>
-            <td class="mono">${fila.prom_humedad}</td>
-            <td class="mono">${fila.prom_presion}</td>
-            <td class="mono">${fila.prom_luz}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } catch (err) { console.error('Error al cargar resumen:', err); }
+  {# ---------- 2 + 3 ---------- #}
+  <div class="grid-2" style="margin-bottom:20px;">
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Clasificar humedad</h2>
+          <span class="muted text-sm mono">fn_clasificar_humedad · SQL</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field" style="flex:1;">
+          <label class="form-label" for="input-humedad">Valor de humedad (%)</label>
+          <input class="form-input mono" id="input-humedad" type="number"
+                 step="0.1" min="0" max="100" placeholder="Ej. 55.0">
+        </div>
+        <button class="btn btn-primary" id="btn-clasificar">Clasificar</button>
+      </div>
+
+      <div id="resultado-humedad" class="flash" style="margin-top:14px; display:none;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Lecturas por zona</h2>
+          <span class="muted text-sm mono">sp_lecturas_por_zona · SQL</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field" style="flex:1;">
+          <label class="form-label" for="select-zona">Zona</label>
+          <select class="form-select" id="select-zona">
+            <option value="1">Zona 1</option>
+            <option value="2">Zona 2</option>
+            <option value="3">Zona 3</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btn-cargar-zona">Cargar</button>
+      </div>
+
+      <div class="table-wrap" style="margin-top:14px;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Dispositivo</th>
+              <th class="num">Temp</th>
+              <th class="num">Hum</th>
+              <th class="num">Presión</th>
+              <th class="num">Luz</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-lecturas">
+            <tr><td colspan="6" class="empty">Selecciona una zona</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  {# ---------- 4. Alertas Mongo ---------- #}
+  <div class="card" style="border-color: var(--terra);">
+    <div class="card-header">
+      <div>
+        <h2>Log de alertas <span class="badge terra" style="margin-left:6px;">MongoDB</span></h2>
+        <span class="muted text-sm">Últimas 20 alertas registradas en MongoDB Atlas</span>
+      </div>
+      <span class="badge"><span class="dot"></span><span id="alertas-count">0</span> eventos</span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Zona</th>
+            <th>Variable</th>
+            <th class="num">Valor</th>
+            <th>Nivel</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-alertas">
+          <tr><td colspan="5" class="empty">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const { fmt, getJSON } = window.Riego;
+
+  async function cargarResumen() {
+    const tbody = document.getElementById("tabla-resumen");
+    try {
+      const datos = await getJSON("/api/sql/resumen");
+      if (!datos || !datos.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty">Sin datos</td></tr>';
+        return;
+      }
+      tbody.innerHTML = datos.map(f => `
+        <tr>
+          <td><strong>${f.zona ?? "—"}</strong></td>
+          <td class="mono">${f.dispositivo ?? "—"}</td>
+          <td class="num">${fmt.int(f.total_lecturas)}</td>
+          <td class="num">${fmt.num(f.prom_temp)}</td>
+          <td class="num">${fmt.num(f.prom_humedad)}</td>
+          <td class="num">${fmt.num(f.prom_presion, 0)}</td>
+          <td class="num">${fmt.num(f.prom_luz, 0)}</td>
+        </tr>
+      `).join("");
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">Error al cargar resumen</td></tr>';
     }
+  }
 
-    async function clasificarHumedad() {
-      const valor = document.getElementById('input-humedad').value;
-      if (valor === '') { alert('Ingresa un valor de humedad.'); return; }
-      try {
-        const res = await fetch(`/api/sql/humedad/${parseFloat(valor)}`);
-        const data = await res.json();
-        const div = document.getElementById('resultado-humedad');
-        if (data.error) {
-          div.textContent = 'Error: ' + data.error;
-        } else {
-          div.textContent = `Humedad ${data.valor}% → ${data.clasificacion}`;
-        }
-      } catch (err) { console.error('Error al clasificar humedad:', err); }
+  async function clasificar() {
+    const v = document.getElementById("input-humedad").value;
+    const out = document.getElementById("resultado-humedad");
+    if (v === "") {
+      out.style.display = "block";
+      out.className = "flash";
+      out.textContent = "Ingresa un valor de humedad.";
+      return;
     }
-
-    async function cargarLecturasZona() {
-      const idZona = document.getElementById('select-zona').value;
-      try {
-        const res = await fetch(`/api/sql/zona/${idZona}`);
-        if (!res.ok) { console.error('Error en /api/sql/zona', res.status); return; }
-        const datos = await res.json();
-        const tbody = document.querySelector('#tabla-lecturas tbody');
-        tbody.innerHTML = '';
-        if (datos.error) {
-          tbody.innerHTML = `<tr><td colspan="7">Error: ${datos.error}</td></tr>`;
-          return;
-        }
-        datos.forEach(fila => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${fila.fecha}</td>
-            <td>${fila.dispositivo}</td>
-            <td class="mono">${fila.temp_dht}</td>
-            <td class="mono">${fila.humedad}</td>
-            <td class="mono">${fila.temp_bmp}</td>
-            <td class="mono">${fila.presion}</td>
-            <td class="mono">${fila.luz}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } catch (err) { console.error('Error al cargar lecturas de zona:', err); }
+    try {
+      const data = await getJSON(`/api/sql/humedad/${parseFloat(v)}`);
+      out.style.display = "block";
+      if (data.error) {
+        out.className = "flash danger";
+        out.textContent = "Error: " + data.error;
+      } else {
+        out.className = "flash success";
+        out.innerHTML = `Humedad <strong class="mono">${data.valor}%</strong> → <strong>${data.clasificacion}</strong>`;
+      }
+    } catch (e) {
+      out.style.display = "block";
+      out.className = "flash danger";
+      out.textContent = "Error en la consulta.";
     }
+  }
 
-    async function cargarAlertas() {
-      try {
-        const res = await fetch('/api/mongo/alertas');
-        if (!res.ok) { console.error('Error en /api/mongo/alertas', res.status); return; }
-        const datos = await res.json();
-        const tbody = document.querySelector('#tabla-alertas tbody');
-        tbody.innerHTML = '';
-        if (!datos.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#aaa;">Sin alertas registradas</td></tr>';
-          return;
-        }
-        datos.forEach(alerta => {
-          const tr = document.createElement('tr');
-          const nivelClass = alerta.nivel === 'critico'
-            ? 'nivel-critico'
-            : alerta.nivel === 'advertencia'
-              ? 'nivel-advertencia'
-              : 'nivel-normal';
-          tr.innerHTML = `
-            <td>${alerta.fecha}</td>
-            <td>${alerta.zona}</td>
-            <td>${alerta.variable}</td>
-            <td class="mono">${alerta.valor_medido}</td>
-            <td class="${nivelClass}">${alerta.nivel}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } catch (err) { console.error('Error al cargar alertas:', err); }
+  async function cargarLecturasZona() {
+    const id = document.getElementById("select-zona").value;
+    const tbody = document.getElementById("tabla-lecturas");
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Cargando…</td></tr>';
+    try {
+      const datos = await getJSON(`/api/sql/zona/${id}`);
+      if (datos.error) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty">Error: ${datos.error}</td></tr>`;
+        return;
+      }
+      if (!datos.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin lecturas en esta zona</td></tr>';
+        return;
+      }
+      tbody.innerHTML = datos.map(f => `
+        <tr>
+          <td class="mono">${fmt.fecha(f.fecha)}</td>
+          <td class="mono">${f.dispositivo ?? "—"}</td>
+          <td class="num">${fmt.num(f.temp_dht)}</td>
+          <td class="num">${fmt.num(f.humedad)}</td>
+          <td class="num">${fmt.num(f.presion, 0)}</td>
+          <td class="num">${fmt.num(f.luz, 0)}</td>
+        </tr>
+      `).join("");
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">Error al cargar</td></tr>';
     }
+  }
 
-    cargarResumen();
-    cargarAlertas();
-  </script>
+  async function cargarAlertas() {
+    const tbody = document.getElementById("tabla-alertas");
+    try {
+      const datos = await getJSON("/api/mongo/alertas");
+      document.getElementById("alertas-count").textContent = datos.length;
+      if (!datos.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty">Sin alertas registradas</td></tr>';
+        return;
+      }
+      tbody.innerHTML = datos.map(a => {
+        const tone = a.nivel === "critico" ? "danger" :
+                     a.nivel === "advertencia" ? "warn" : "green";
+        const nivel = a.nivel === "critico" ? "crítico" :
+                      a.nivel === "advertencia" ? "advertencia" : "normal";
+        return `
+          <tr>
+            <td class="mono">${fmt.fecha(a.fecha)}</td>
+            <td>${a.zona ?? "—"}</td>
+            <td>${a.variable ?? "—"}</td>
+            <td class="num">${a.valor_medido ?? "—"}</td>
+            <td><span class="badge ${tone}"><span class="dot"></span>${nivel}</span></td>
+          </tr>
+        `;
+      }).join("");
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">Error al cargar alertas</td></tr>';
+    }
+  }
 
+  document.getElementById("btn-clasificar").addEventListener("click", clasificar);
+  document.getElementById("input-humedad").addEventListener("keydown", e => {
+    if (e.key === "Enter") clasificar();
+  });
+  document.getElementById("btn-cargar-zona").addEventListener("click", cargarLecturasZona);
+
+  cargarResumen();
+  cargarAlertas();
+})();
+</script>
 {% endblock %}

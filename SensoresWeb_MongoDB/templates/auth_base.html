@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Acceso{% endblock %} · Sistema Riego</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("riego.theme") ||
+                (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+
+  <div class="auth-shell">
+
+    <aside class="auth-hero">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 C 8 6, 6 10, 6 14 a 6 6 0 0 0 12 0 c 0 -4 -2 -8 -6 -12 z"/>
+            <path d="M12 14 v 8"/>
+          </svg>
+        </span>
+        Sistema Riego
+      </div>
+
+      <div>
+        <h1 class="auth-headline">Tu cultivo,<br>monitoreado en tiempo real.</h1>
+        <p class="auth-sub">
+          Lecturas continuas de tus sensores Arduino, alertas cuando algo se sale de lo normal
+          y análisis histórico por zona de riego.
+        </p>
+        <ul class="auth-bullets">
+          <li>Temperatura, humedad, presión y luz en vivo</li>
+          <li>Histórico por zona desde SQL Server</li>
+          <li>Alertas configurables en MongoDB Atlas</li>
+        </ul>
+      </div>
+
+      <div class="text-xs mono" style="opacity:0.7;">v1.0 · proyecto BDD2</div>
+    </aside>
+
+    <section class="auth-form">
+      <div class="auth-card">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="stack" style="margin-bottom:18px;">
+              {% for category, msg in messages %}
+                <div class="flash {{ category }}">{{ msg }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {% block auth_content %}{% endblock %}
+      </div>
+    </section>
+
+  </div>
+
+</body>
+</html>

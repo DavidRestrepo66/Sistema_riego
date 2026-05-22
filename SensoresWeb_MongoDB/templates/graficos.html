@@ -1,203 +1,172 @@
-{% extends 'base.html' %}
-{% set active = 'graficos' %}
-
-{% block title %}Gráficos — Sistema de Riego{% endblock %}
-
-{% block head_extra %}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0"></script>
-{% endblock %}
-
-{% block page_title %}📈 Gráficos de Sensores{% endblock %}
-{% block page_subtitle %}Visualización en tiempo real de todas las lecturas{% endblock %}
+{% extends "base.html" %}
+{% set active_nav = "graficos" %}
+{% block title %}Gráficos{% endblock %}
 
 {% block content %}
 
-  <!-- Temperatura -->
-  <div class="chart-container">
-    <h3>🌡️ Temperatura (°C)</h3>
-    <canvas id="graficoTemp"></canvas>
-    <button class="btn btn-outline btn-sm" onclick="resetZoom('graficoTemp')">🔄 Resetear Zoom</button>
-  </div>
-
-  <!-- Humedad -->
-  <div class="chart-container">
-    <h3>💧 Humedad (%)</h3>
-    <canvas id="graficoHumedad"></canvas>
-    <button class="btn btn-outline btn-sm" onclick="resetZoom('graficoHumedad')">🔄 Resetear Zoom</button>
-  </div>
-
-  <!-- Presión -->
-  <div class="chart-container">
-    <h3>🌬️ Presión (hPa)</h3>
-    <canvas id="graficoPresion"></canvas>
-    <button class="btn btn-outline btn-sm" onclick="resetZoom('graficoPresion')">🔄 Resetear Zoom</button>
-  </div>
-
-  <!-- Luz -->
-  <div class="chart-container">
-    <h3>💡 Intensidad de Luz (lux)</h3>
-    <canvas id="graficoLuz"></canvas>
-    <button class="btn btn-outline btn-sm" onclick="resetZoom('graficoLuz')">🔄 Resetear Zoom</button>
-  </div>
-
-  <!-- Modal de ampliación -->
-  <div id="modalGrafico">
-    <div class="contenido">
-      <span id="cerrarModal">&times;</span>
-      <canvas id="graficoAmpliado" style="height:500px;"></canvas>
-      <button class="btn btn-outline btn-sm" id="resetZoomAmpliado">🔄 Resetear Zoom</button>
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">Visualización</span>
+      <h1>Gráficos de sensores</h1>
+      <p class="lead">Tendencias por variable · datos en vivo desde MongoDB Atlas.</p>
+    </div>
+    <div class="row gap-12">
+      <div class="chip-group" role="tablist" aria-label="rango temporal">
+        <button class="chip" data-range="1h">1h</button>
+        <button class="chip active" data-range="24h">24h</button>
+        <button class="chip" data-range="7d">7d</button>
+      </div>
+      <button class="btn" id="btn-refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+        Refrescar
+      </button>
     </div>
   </div>
 
-  <script>
-    let fechas = [];
-    let temp_dht = [];
-    let humedad = [];
-    let temp_bmp = [];
-    let presion = [];
-    let luz = [];
+  <div class="grid-2 stack gap-16">
 
-    async function cargarDatos() {
-      try {
-        const res = await fetch('/api/datos');
-        if (!res.ok) {
-          console.error('Error al obtener datos');
-          return;
-        }
-        const data = await res.json();
+    {% for chart in [
+      { 'id': 'temp',  'titulo': 'Temperatura',     'unidad': '°C',  'campo': 'temp_dht', 'tono': 'temp'  },
+      { 'id': 'hum',   'titulo': 'Humedad',         'unidad': '%',   'campo': 'humedad',  'tono': 'hum'   },
+      { 'id': 'pres',  'titulo': 'Presión',         'unidad': 'hPa', 'campo': 'presion',  'tono': 'pres'  },
+      { 'id': 'luz',   'titulo': 'Intensidad de luz','unidad': 'lux','campo': 'luz',      'tono': 'luz'   },
+    ] %}
+      <div class="card">
+        <div class="card-header">
+          <div class="row gap-12">
+            <span class="kpi-icon tone-{{ chart.tono }}" style="width:32px;height:32px;">
+              {% if chart.id == 'temp' %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+                </svg>
+              {% elif chart.id == 'hum' %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2 C 8 6, 6 10, 6 14 a 6 6 0 0 0 12 0 c 0 -4 -2 -8 -6 -12 z"/>
+                </svg>
+              {% elif chart.id == 'pres' %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <polyline points="12 7 12 12 15 14"/>
+                </svg>
+              {% else %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="4"/>
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2"/>
+                </svg>
+              {% endif %}
+            </span>
+            <div>
+              <h2 style="margin:0;">{{ chart.titulo }}</h2>
+              <span class="muted text-sm">{{ chart.unidad }}</span>
+            </div>
+          </div>
+          <div class="row gap-12 text-xs muted" id="stats-{{ chart.id }}">
+            <span>—</span>
+          </div>
+        </div>
+        <div class="chart-box">
+          <canvas id="chart-{{ chart.id }}" data-campo="{{ chart.campo }}" data-color="{{ chart.tono }}"></canvas>
+        </div>
+      </div>
+    {% endfor %}
 
-        fechas    = data.map(row => row.fecha);
-        temp_dht  = data.map(row => row.temp_dht);
-        humedad   = data.map(row => row.humedad);
-        temp_bmp  = data.map(row => row.temp_bmp);
-        presion   = data.map(row => row.presion);
-        luz       = data.map(row => row.luz);
+  </div>
 
-        crearGrafico('graficoTemp',    'Temperatura (°C)', fechas, temp_dht, 'rgba(255,99,132,0.8)');
-        crearGrafico('graficoHumedad', 'Humedad (%)',      fechas, humedad,  'rgba(54,162,235,0.8)');
-        crearGrafico('graficoPresion', 'Presión (hPa)',    fechas, presion,  'rgba(75,192,192,0.8)');
-        crearGrafico('graficoLuz',     'Luz (lux)',        fechas, luz,      'rgba(255,206,86,0.8)');
+{% endblock %}
 
-        document.getElementById('graficoTemp').onclick    = () => abrirModal('Temperatura (°C)', fechas, temp_dht, 'rgba(255,99,132,0.8)');
-        document.getElementById('graficoHumedad').onclick = () => abrirModal('Humedad (%)',      fechas, humedad,  'rgba(54,162,235,0.8)');
-        document.getElementById('graficoPresion').onclick = () => abrirModal('Presión (hPa)',    fechas, presion,  'rgba(75,192,192,0.8)');
-        document.getElementById('graficoLuz').onclick     = () => abrirModal('Luz (lux)',        fechas, luz,      'rgba(255,206,86,0.8)');
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script>
+(function () {
+  const { fmt, getJSON, autoRefresh } = window.Riego;
+  RiegoCharts.applyDefaults();
+  const pal = RiegoCharts.palette();
+  const colors = { temp: pal.temp, hum: pal.hum, pres: pal.pres, luz: pal.luz };
+  const charts = {};
 
-      } catch (error) {
-        console.error('Error cargando gráficos:', error);
-      }
-    }
-
-    function crearGrafico(id, etiqueta, etiquetas, datos, color) {
-      const ctx = document.getElementById(id);
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: [...etiquetas].reverse(),
-          datasets: [{
-            label: etiqueta,
-            data: [...datos].reverse(),
-            borderColor: color,
-            backgroundColor: color.replace('0.8', '0.2'),
-            borderWidth: 2,
-            tension: 0.3,
-            fill: true,
-            pointRadius: 3,
-            pointHoverRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: true, position: 'top' },
-            tooltip: {
-              enabled: true,
-              mode: 'nearest',
-              callbacks: {
-                label: function(context) {
-                  return `Valor: ${context.parsed.y.toFixed(2)}`;
-                }
-              }
-            },
-            zoom: {
-              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-              pan:  { enabled: true, mode: 'x' }
-            }
+  function buildChart(canvas, etiqueta, labels, valores, color) {
+    const ctx = canvas.getContext("2d");
+    if (charts[canvas.id]) charts[canvas.id].destroy();
+    charts[canvas.id] = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: etiqueta,
+          data: valores,
+          borderColor: color,
+          backgroundColor: (c) => RiegoCharts.gradient(c, color),
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}` } },
+          zoom: {
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "x" },
+            pan: { enabled: true, mode: "x" },
           },
-          scales: {
-            x: { ticks: { color: '#555' }, grid: { color: 'rgba(200,200,200,0.2)' } },
-            y: {
-              beginAtZero: false,
-              ticks: { color: '#555' },
-              grid: { color: 'rgba(200,200,200,0.2)' },
-              suggestedMin: Math.min(...datos) - 1,
-              suggestedMax: Math.max(...datos) + 1
-            }
-          }
-        }
-      });
-    }
-
-    function resetZoom(id) {
-      const chart = Chart.getChart(id);
-      if (chart) chart.resetZoom();
-    }
-
-    let modal = document.getElementById('modalGrafico');
-    let cerrar = document.getElementById('cerrarModal');
-    let chartAmpliado = null;
-
-    function abrirModal(etiqueta, etiquetas, datos, color) {
-      modal.style.display = 'flex';
-      if (chartAmpliado) chartAmpliado.destroy();
-      const ctx = document.getElementById('graficoAmpliado');
-      chartAmpliado = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: [...etiquetas].reverse(),
-          datasets: [{
-            label: etiqueta,
-            data: [...datos].reverse(),
-            borderColor: color,
-            backgroundColor: color.replace('0.8', '0.2'),
-            borderWidth: 2,
-            tension: 0.3,
-            fill: true,
-            pointRadius: 4,
-            pointHoverRadius: 8
-          }]
         },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { display: true, position: 'top' },
-            zoom: {
-              zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-              pan:  { enabled: true, mode: 'x' }
-            }
-          }
-        }
+        scales: {
+          x: { ticks: { maxTicksLimit: 8 }, grid: { display: false } },
+          y: { beginAtZero: false, grid: { color: pal.border } },
+        },
+      },
+    });
+  }
+
+  function actualizarStats(id, valores) {
+    const el = document.getElementById("stats-" + id);
+    if (!el || !valores.length) return;
+    const min = Math.min(...valores), max = Math.max(...valores);
+    const prom = valores.reduce((a, b) => a + b, 0) / valores.length;
+    el.innerHTML = `
+      <span>mín <strong>${fmt.num(min)}</strong></span>
+      <span>prom <strong>${fmt.num(prom)}</strong></span>
+      <span>máx <strong>${fmt.num(max)}</strong></span>
+      <span class="mono">${valores.length} pts</span>
+    `;
+  }
+
+  async function cargar() {
+    try {
+      const datos = await getJSON("/api/datos");
+      const labels = datos.map(d => d.fecha).reverse();
+
+      document.querySelectorAll("canvas[data-campo]").forEach(canvas => {
+        const campo = canvas.dataset.campo;
+        const color = colors[canvas.dataset.color];
+        const valores = datos.map(d => Number(d[campo])).reverse();
+        buildChart(canvas, canvas.dataset.campo, labels, valores, color);
+        actualizarStats(canvas.dataset.color, valores);
       });
+    } catch (e) {
+      console.error("Error /api/datos", e);
     }
+  }
 
-    cerrar.onclick = function() {
-      modal.style.display = 'none';
-      if (chartAmpliado) chartAmpliado.destroy();
-    };
+  document.getElementById("btn-refresh").addEventListener("click", cargar);
+  document.querySelectorAll(".chip[data-range]").forEach(c => {
+    c.addEventListener("click", () => {
+      document.querySelectorAll(".chip[data-range]").forEach(x => x.classList.remove("active"));
+      c.classList.add("active");
+      // (rango sólo visual por ahora — depende de la API extender por fecha)
+    });
+  });
 
-    document.getElementById('resetZoomAmpliado').onclick = function() {
-      if (chartAmpliado) chartAmpliado.resetZoom();
-    };
-
-    window.onclick = function(e) {
-      if (e.target == modal) {
-        modal.style.display = 'none';
-        if (chartAmpliado) chartAmpliado.destroy();
-      }
-    };
-
-    cargarDatos();
-  </script>
-
+  autoRefresh(cargar, 10000);
+})();
+</script>
 {% endblock %}

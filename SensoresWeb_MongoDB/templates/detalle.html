@@ -1,64 +1,110 @@
-{% extends 'base.html' %}
-{% set active = 'graficos' %}
-
-{% block title %}Detalle: {{ tipo | replace('_', ' ') | title }} — Sistema de Riego{% endblock %}
-
-{% block head_extra %}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-{% endblock %}
-
-{% block page_title %}📊 Detalle: {{ tipo | replace('_', ' ') | title }}{% endblock %}
-{% block page_subtitle %}Histórico completo de este sensor{% endblock %}
+{% extends "base.html" %}
+{% block title %}Detalle · {{ tipo }}{% endblock %}
 
 {% block content %}
 
-  <!-- Navegación rápida entre sensores -->
-  <div class="sensor-tabs">
-    <a href="{{ url_for('views.grafico_detalle', tipo='temp_dht') }}"  class="sensor-tab {% if tipo == 'temp_dht' %}active{% endif %}">🌡️ Temp DHT</a>
-    <a href="{{ url_for('views.grafico_detalle', tipo='humedad') }}"   class="sensor-tab {% if tipo == 'humedad' %}active{% endif %}">💧 Humedad</a>
-    <a href="{{ url_for('views.grafico_detalle', tipo='temp_bmp') }}"  class="sensor-tab {% if tipo == 'temp_bmp' %}active{% endif %}">🌡️ Temp BMP</a>
-    <a href="{{ url_for('views.grafico_detalle', tipo='presion') }}"   class="sensor-tab {% if tipo == 'presion' %}active{% endif %}">🌬️ Presión</a>
-    <a href="{{ url_for('views.grafico_detalle', tipo='luz') }}"       class="sensor-tab {% if tipo == 'luz' %}active{% endif %}">💡 Luz</a>
+  <div class="page-header">
+    <div>
+      <span class="eyebrow"><a href="{{ url_for('views.graficos') }}">← Gráficos</a> / detalle</span>
+      <h1 style="text-transform: capitalize;">{{ tipo }}</h1>
+      <p class="lead">Vista ampliada del histórico de esta variable.</p>
+    </div>
+    <a href="{{ url_for('views.graficos') }}" class="btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+      Volver a gráficos
+    </a>
   </div>
 
-  <div class="chart-container">
-    <canvas id="grafico"></canvas>
+  <div class="kpi-grid cols-3" style="margin-bottom:20px;">
+    <div class="kpi">
+      <div class="kpi-header"><span class="kpi-label">Actual</span></div>
+      <div class="kpi-value"><span id="m-actual">—</span></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-header"><span class="kpi-label">Promedio</span></div>
+      <div class="kpi-value"><span id="m-prom">—</span></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-header"><span class="kpi-label">Rango</span></div>
+      <div class="kpi-value"><span id="m-rango">—</span></div>
+    </div>
   </div>
 
-  <script>
-    const tipo = "{{ tipo }}";
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h2 style="text-transform: capitalize;">Histórico · {{ tipo }}</h2>
+        <span class="muted text-sm" id="m-meta">—</span>
+      </div>
+    </div>
+    <div class="chart-box lg">
+      <canvas id="grafico"></canvas>
+    </div>
+  </div>
 
-    async function cargarGrafico() {
-      try {
-        const response = await fetch('/api/datos');
-        const datos = await response.json();
-        const labels = datos.map(d => d.fecha);
-        const valores = datos.map(d => d[tipo]);
-        const ctx = document.getElementById('grafico');
-        new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: labels.reverse(),
-            datasets: [{
-              label: tipo,
-              data: valores.reverse(),
-              borderWidth: 2,
-              tension: 0.3,
-              fill: false
-            }]
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const tipo = "{{ tipo }}";
+  const { fmt, getJSON } = window.Riego;
+  RiegoCharts.applyDefaults();
+  const pal = RiegoCharts.palette();
+  const tonoMap = { temp_dht: pal.temp, humedad: pal.hum, temp_bmp: pal.temp, presion: pal.pres, luz: pal.luz };
+  const color = tonoMap[tipo] || pal.green;
+
+  async function cargar() {
+    try {
+      const datos = await getJSON("/api/datos");
+      const labels = datos.map(d => d.fecha).reverse();
+      const valores = datos.map(d => Number(d[tipo])).reverse();
+
+      // métricas
+      const min = Math.min(...valores), max = Math.max(...valores);
+      const prom = valores.reduce((a,b) => a + b, 0) / valores.length;
+      document.getElementById("m-actual").textContent = fmt.num(valores[valores.length - 1]);
+      document.getElementById("m-prom").textContent = fmt.num(prom);
+      document.getElementById("m-rango").textContent = `${fmt.num(min)} – ${fmt.num(max)}`;
+      document.getElementById("m-meta").textContent = `${valores.length} puntos · desde ${fmt.fecha(labels[0])}`;
+
+      const ctx = document.getElementById("grafico").getContext("2d");
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: tipo,
+            data: valores,
+            borderColor: color,
+            backgroundColor: (c) => RiegoCharts.gradient(c, color),
+            borderWidth: 2,
+            tension: 0.3,
+            fill: true,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { maxTicksLimit: 10 }, grid: { display: false } },
+            y: { beginAtZero: false, grid: { color: pal.border } },
           },
-          options: {
-            responsive: true,
-            plugins: { legend: { display: true } },
-            scales: { y: { beginAtZero: false } }
-          }
-        });
-      } catch (error) {
-        console.error('Error cargando gráfico:', error);
-      }
+        },
+      });
+    } catch (e) {
+      console.error("Error /api/datos", e);
     }
-
-    cargarGrafico();
-  </script>
-
+  }
+  cargar();
+})();
+</script>
 {% endblock %}

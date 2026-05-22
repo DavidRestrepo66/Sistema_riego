@@ -1,106 +1,292 @@
-{% extends 'base.html' %}
-{% set active = 'dashboard' %}
-
-{% block title %}Dashboard — Sistema de Riego{% endblock %}
-
-{% block page_title %}📋 Lecturas en Tiempo Real{% endblock %}
-{% block page_subtitle %}Datos desde MongoDB Atlas · actualización cada 5 segundos{% endblock %}
+{% extends "base.html" %}
+{% set active_nav = "dashboard" %}
+{% block title %}Dashboard{% endblock %}
 
 {% block content %}
 
-  <!-- Cards de métricas -->
-  <div class="card-grid">
-    <div class="metric-card metric-temp">
-      <div class="metric-label">🌡️ Temperatura DHT</div>
-      <div class="metric-value" id="metric-temp">--</div>
-      <div class="metric-unit">°C</div>
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">Panel principal</span>
+      <h1>Buen día{% if session.get('nombre') %}, {{ session.nombre.split(' ')[0] }}{% endif %} 🌱</h1>
+      <p class="lead">Tus zonas están reportando con normalidad.
+        Última actualización: <span class="mono" id="last-update">—</span></p>
     </div>
-    <div class="metric-card metric-hum">
-      <div class="metric-label">💧 Humedad</div>
-      <div class="metric-value" id="metric-hum">--</div>
-      <div class="metric-unit">%</div>
-    </div>
-    <div class="metric-card metric-pres">
-      <div class="metric-label">🌬️ Presión</div>
-      <div class="metric-value" id="metric-pres">--</div>
-      <div class="metric-unit">hPa</div>
-    </div>
-    <div class="metric-card metric-luz">
-      <div class="metric-label">💡 Luz</div>
-      <div class="metric-value" id="metric-luz">--</div>
-      <div class="metric-unit">lux</div>
+    <div class="row gap-12">
+      <button class="btn" id="btn-refresh">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+        Refrescar
+      </button>
+      <a href="{{ url_for('views.graficos') }}" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 17 9 11 13 15 21 7"/>
+          <polyline points="14 7 21 7 21 14"/>
+        </svg>
+        Ver gráficos
+      </a>
     </div>
   </div>
 
-  <!-- Tabla de lecturas -->
+  {# ---------- KPIs ---------- #}
+  <div class="kpi-grid" style="margin-bottom:20px;">
+
+    <div class="kpi">
+      <div class="kpi-header">
+        <span class="kpi-label">Temperatura</span>
+        <span class="kpi-icon tone-temp">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+          </svg>
+        </span>
+      </div>
+      <div class="kpi-value">
+        <span id="kpi-temp">—</span><span class="kpi-unit">°C</span>
+      </div>
+      <div class="kpi-trend" id="kpi-temp-sub">Esperando datos…</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-header">
+        <span class="kpi-label">Humedad</span>
+        <span class="kpi-icon tone-hum">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 C 8 6, 6 10, 6 14 a 6 6 0 0 0 12 0 c 0 -4 -2 -8 -6 -12 z"/>
+          </svg>
+        </span>
+      </div>
+      <div class="kpi-value">
+        <span id="kpi-hum">—</span><span class="kpi-unit">%</span>
+      </div>
+      <div class="kpi-trend" id="kpi-hum-sub">Esperando datos…</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-header">
+        <span class="kpi-label">Presión</span>
+        <span class="kpi-icon tone-pres">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <polyline points="12 7 12 12 15 14"/>
+          </svg>
+        </span>
+      </div>
+      <div class="kpi-value">
+        <span id="kpi-pres">—</span><span class="kpi-unit">hPa</span>
+      </div>
+      <div class="kpi-trend" id="kpi-pres-sub">Esperando datos…</div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-header">
+        <span class="kpi-label">Luz</span>
+        <span class="kpi-icon tone-luz">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+        </span>
+      </div>
+      <div class="kpi-value">
+        <span id="kpi-luz">—</span><span class="kpi-unit">lux</span>
+      </div>
+      <div class="kpi-trend" id="kpi-luz-sub">Esperando datos…</div>
+    </div>
+
+  </div>
+
+  {# ---------- Tendencia + alertas ---------- #}
+  <div class="grid-2-wide" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Tendencia · humedad</h2>
+          <span class="muted text-sm">Últimas 24 horas</span>
+        </div>
+        <a href="{{ url_for('views.graficos') }}" class="btn btn-ghost btn-sm">Ver todos →</a>
+      </div>
+      <div class="chart-box sm">
+        <canvas id="trend-chart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Alertas recientes</h2>
+          <span class="muted text-sm">Últimos eventos</span>
+        </div>
+        <a href="{{ url_for('views.analisis') }}" class="btn btn-ghost btn-sm">Ver todas →</a>
+      </div>
+      <div class="timeline" id="alert-list">
+        <div class="empty">Cargando alertas…</div>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- Tabla de lecturas ---------- #}
   <div class="card">
-    <div class="card-header">Tabla de lecturas</div>
-    <div class="card-body">
-      <table id="tabla">
+    <div class="card-header">
+      <div>
+        <h2>Lecturas recientes</h2>
+        <span class="muted text-sm">Stream desde MongoDB · refresca cada 5 s</span>
+      </div>
+      <span class="badge"><span class="dot"></span><span id="row-count">0</span> registros</span>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl">
         <thead>
           <tr>
             <th>Fecha</th>
-            <th>Temp DHT</th>
-            <th>Humedad</th>
-            <th>Temp BMP</th>
-            <th>Presión (hPa)</th>
-            <th>Luz (lux)</th>
+            <th class="num">Temp DHT</th>
+            <th class="num">Humedad</th>
+            <th class="num">Temp BMP</th>
+            <th class="num">Presión</th>
+            <th class="num">Luz</th>
           </tr>
         </thead>
-        <tbody></tbody>
+        <tbody id="tabla-body">
+          <tr><td colspan="6" class="empty">Cargando datos…</td></tr>
+        </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Acciones rápidas -->
-  <div class="action-bar">
-    <a href="{{ url_for('views.graficos') }}" class="btn btn-primary">📈 Ver Gráficos</a>
-    <a href="{{ url_for('views.analisis') }}" class="btn btn-success">🔬 Ver Análisis SQL</a>
-  </div>
+{% endblock %}
 
-  <script>
-    async function cargarDatos() {
-      try {
-        const res = await fetch('/api/datos');
-        if (!res.ok) {
-          console.error('Error en /api/datos', res.status);
-          return;
-        }
-        const datos = await res.json();
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const { fmt, getJSON, autoRefresh, updateLastUpdate } = window.Riego;
+  RiegoCharts.applyDefaults();
+  const pal = RiegoCharts.palette();
 
-        if (datos.length > 0) {
-          const ultimo = datos[0];
-          document.getElementById('metric-temp').textContent =
-            ultimo.temp_dht !== null ? parseFloat(ultimo.temp_dht).toFixed(1) : '--';
-          document.getElementById('metric-hum').textContent =
-            ultimo.humedad !== null ? parseFloat(ultimo.humedad).toFixed(1) : '--';
-          document.getElementById('metric-pres').textContent =
-            ultimo.presion !== null ? parseFloat(ultimo.presion).toFixed(1) : '--';
-          document.getElementById('metric-luz').textContent =
-            ultimo.luz !== null ? parseFloat(ultimo.luz).toFixed(0) : '--';
-        }
+  let trendChart = null;
 
-        const tbody = document.querySelector('#tabla tbody');
-        tbody.innerHTML = '';
-        datos.forEach(fila => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${fila.fecha}</td>
-            <td class="mono">${fila.temp_dht}</td>
-            <td class="mono">${fila.humedad}</td>
-            <td class="mono">${fila.temp_bmp}</td>
-            <td class="mono">${fila.presion}</td>
-            <td class="mono">${fila.luz}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      } catch (err) {
-        console.error('Error al cargar datos:', err);
+  function setKpi(id, val, sub) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+    const subEl = document.getElementById(id + "-sub");
+    if (subEl && sub) subEl.innerHTML = sub;
+  }
+
+  function deltaHtml(curr, prev, unit = "") {
+    if (curr == null || prev == null) return '<span class="delta flat">—</span>';
+    const d = curr - prev;
+    const abs = Math.abs(d).toFixed(1);
+    if (Math.abs(d) < 0.05) return `<span class="delta flat">→ sin cambio</span>`;
+    return d > 0
+      ? `<span class="delta up">↑ ${abs}${unit}</span> vs. anterior`
+      : `<span class="delta down">↓ ${abs}${unit}</span> vs. anterior`;
+  }
+
+  function buildTrend(data) {
+    const labels = data.map(d => d.fecha).reverse();
+    const values = data.map(d => Number(d.humedad)).reverse();
+    const ctx = document.getElementById("trend-chart").getContext("2d");
+    if (trendChart) { trendChart.destroy(); }
+    trendChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Humedad (%)",
+          data: values,
+          borderColor: pal.hum,
+          backgroundColor: (c) => RiegoCharts.gradient(c, pal.hum),
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 6 }, grid: { display: false } },
+          y: { beginAtZero: false, grid: { color: pal.border } },
+        },
+      },
+    });
+  }
+
+  function paintTable(data) {
+    const tbody = document.getElementById("tabla-body");
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin lecturas todavía</td></tr>';
+    } else {
+      tbody.innerHTML = data.slice(0, 20).map(r => `
+        <tr>
+          <td class="mono">${fmt.fecha(r.fecha)}</td>
+          <td class="num">${fmt.num(r.temp_dht)}</td>
+          <td class="num">${fmt.num(r.humedad)}</td>
+          <td class="num">${fmt.num(r.temp_bmp)}</td>
+          <td class="num">${fmt.num(r.presion, 0)}</td>
+          <td class="num">${fmt.num(r.luz, 0)}</td>
+        </tr>
+      `).join("");
+    }
+    document.getElementById("row-count").textContent = data.length;
+  }
+
+  function paintAlerts(alertas) {
+    const list = document.getElementById("alert-list");
+    if (!alertas || !alertas.length) {
+      list.innerHTML = '<div class="empty">Sin alertas recientes</div>';
+      return;
+    }
+    list.innerHTML = alertas.slice(0, 5).map(a => {
+      const tone = a.nivel === "critico" ? "danger" :
+                   a.nivel === "advertencia" ? "warn" : "green";
+      const nivel = a.nivel === "critico" ? "crítico" :
+                    a.nivel === "advertencia" ? "advertencia" : "normal";
+      return `
+        <div class="timeline-item">
+          <span class="time">${fmt.fecha(a.fecha)}</span>
+          <div class="content">
+            <span class="badge ${tone}"><span class="dot"></span>${nivel}</span>
+            <span>${a.zona ?? "—"} · ${a.variable ?? ""} ${a.valor_medido ?? ""}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function cargar() {
+    try {
+      const datos = await getJSON("/api/datos");
+
+      if (datos && datos.length) {
+        const latest = datos[0];
+        const prev = datos[1] || {};
+        setKpi("kpi-temp", fmt.num(latest.temp_dht), deltaHtml(+latest.temp_dht, +prev.temp_dht, "°"));
+        setKpi("kpi-hum",  fmt.int(latest.humedad),  deltaHtml(+latest.humedad,  +prev.humedad, "%"));
+        setKpi("kpi-pres", fmt.num(latest.presion, 0), deltaHtml(+latest.presion, +prev.presion));
+        setKpi("kpi-luz",  fmt.num(latest.luz, 0),    deltaHtml(+latest.luz, +prev.luz, " lx"));
+        buildTrend(datos);
       }
+      paintTable(datos || []);
+      updateLastUpdate(document.getElementById("last-update"));
+    } catch (e) {
+      console.error("Error /api/datos", e);
     }
 
-    cargarDatos();
-    setInterval(cargarDatos, 5000);
-  </script>
+    try {
+      const alertas = await getJSON("/api/mongo/alertas");
+      paintAlerts(alertas);
+    } catch (e) {
+      paintAlerts([]);
+    }
+  }
 
+  document.getElementById("btn-refresh").addEventListener("click", cargar);
+  autoRefresh(cargar, 5000);
+})();
+</script>
 {% endblock %}
