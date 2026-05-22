@@ -1,126 +1,64 @@
-<!DOCTYPE html>
-<html>
+{% extends 'base.html' %}
+{% set active = 'graficos' %}
 
-<head>
+{% block title %}Detalle: {{ tipo | replace('_', ' ') | title }} — Sistema de Riego{% endblock %}
 
-    <meta charset="utf-8">
+{% block head_extra %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
-    <title>Detalle del Sensor</title>
+{% block page_title %}📊 Detalle: {{ tipo | replace('_', ' ') | title }}{% endblock %}
+{% block page_subtitle %}Histórico completo de este sensor{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% block content %}
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='styles.css') }}">
+  <!-- Navegación rápida entre sensores -->
+  <div class="sensor-tabs">
+    <a href="{{ url_for('views.grafico_detalle', tipo='temp_dht') }}"  class="sensor-tab {% if tipo == 'temp_dht' %}active{% endif %}">🌡️ Temp DHT</a>
+    <a href="{{ url_for('views.grafico_detalle', tipo='humedad') }}"   class="sensor-tab {% if tipo == 'humedad' %}active{% endif %}">💧 Humedad</a>
+    <a href="{{ url_for('views.grafico_detalle', tipo='temp_bmp') }}"  class="sensor-tab {% if tipo == 'temp_bmp' %}active{% endif %}">🌡️ Temp BMP</a>
+    <a href="{{ url_for('views.grafico_detalle', tipo='presion') }}"   class="sensor-tab {% if tipo == 'presion' %}active{% endif %}">🌬️ Presión</a>
+    <a href="{{ url_for('views.grafico_detalle', tipo='luz') }}"       class="sensor-tab {% if tipo == 'luz' %}active{% endif %}">💡 Luz</a>
+  </div>
 
-</head>
+  <div class="chart-container">
+    <canvas id="grafico"></canvas>
+  </div>
 
-<body>
+  <script>
+    const tipo = "{{ tipo }}";
 
-    <div class="container">
+    async function cargarGrafico() {
+      try {
+        const response = await fetch('/api/datos');
+        const datos = await response.json();
+        const labels = datos.map(d => d.fecha);
+        const valores = datos.map(d => d[tipo]);
+        const ctx = document.getElementById('grafico');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels.reverse(),
+            datasets: [{
+              label: tipo,
+              data: valores.reverse(),
+              borderWidth: 2,
+              tension: 0.3,
+              fill: false
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: true } },
+            scales: { y: { beginAtZero: false } }
+          }
+        });
+      } catch (error) {
+        console.error('Error cargando gráfico:', error);
+      }
+    }
 
-        <h2>Gráfico de {{ tipo }}</h2>
+    cargarGrafico();
+  </script>
 
-        <canvas id="grafico"></canvas>
-
-        <br>
-
-        <a href="{{ url_for('views.graficos') }}"
-           class="btn">
-            ⬅ Volver
-        </a>
-
-    </div>
-
-    <script>
-
-        const tipo = "{{ tipo }}";
-
-        async function cargarGrafico() {
-
-            try {
-
-                const response =
-                    await fetch('/api/datos');
-
-                const datos =
-                    await response.json();
-
-                const labels =
-                    datos.map(d => d.fecha);
-
-                const valores =
-                    datos.map(d => d[tipo]);
-
-                const ctx =
-                    document.getElementById('grafico');
-
-                new Chart(ctx, {
-
-                    type: 'line',
-
-                    data: {
-
-                        labels: labels.reverse(),
-
-                        datasets: [{
-
-                            label: tipo,
-
-                            data: valores.reverse(),
-
-                            borderWidth: 2,
-
-                            tension: 0.3,
-
-                            fill: false
-
-                        }]
-
-                    },
-
-                    options: {
-
-                        responsive: true,
-
-                        plugins: {
-
-                            legend: {
-
-                                display: true
-
-                            }
-
-                        },
-
-                        scales: {
-
-                            y: {
-
-                                beginAtZero: false
-
-                            }
-
-                        }
-
-                    }
-
-                });
-
-            } catch (error) {
-
-                console.error(
-                    'Error cargando gráfico:',
-                    error
-                );
-
-            }
-
-        }
-
-        cargarGrafico();
-
-    </script>
-
-</body>
-
-</html>
+{% endblock %}

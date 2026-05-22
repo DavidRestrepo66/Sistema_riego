@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Sistema de Riego{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+  {% block navbar %}
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <span class="navbar-icon">🌿</span>
+      <span class="navbar-title">Sistema de Riego</span>
+    </div>
+    <div class="navbar-links">
+      <a href="{{ url_for('views.dashboard') }}" class="nav-link {% if active == 'dashboard' %}active{% endif %}">
+        📋 Dashboard
+      </a>
+      <a href="{{ url_for('views.graficos') }}" class="nav-link {% if active == 'graficos' %}active{% endif %}">
+        📈 Gráficos
+      </a>
+      <a href="{{ url_for('views.analisis') }}" class="nav-link {% if active == 'analisis' %}active{% endif %}">
+        🔬 Análisis
+      </a>
+    </div>
+    <div class="navbar-actions">
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-sm">🚪 Salir</a>
+    </div>
+  </nav>
+  {% endblock %}
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+      <p class="page-subtitle">{% block page_subtitle %}{% endblock %}</p>
+    </div>
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>

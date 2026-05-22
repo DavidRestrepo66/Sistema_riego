@@ -14,3 +14,5 @@ class Config:
         BAUD_RATE = 9600
     SQL_SERVER = os.getenv("SQL_SERVER", r"localhost\SQLEXPRESS")
     SQL_DATABASE = os.getenv("SQL_DATABASE", "sensores")
+    SQL_USER = os.getenv("SQL_USER", "sa")
+    SQL_PASSWORD = os.getenv("SQL_PASSWORD", "")

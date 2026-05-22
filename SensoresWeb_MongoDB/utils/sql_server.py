@@ -6,6 +6,8 @@ def get_sql_server_connection():
         f"DRIVER={{ODBC Driver 17 for SQL Server}};"
         f"SERVER={Config.SQL_SERVER};"
         f"DATABASE={Config.SQL_DATABASE};"
-        "Trusted_Connection=yes;"
+        f"UID={Config.SQL_USER};"
+        f"PWD={Config.SQL_PASSWORD};"
+        "TrustServerCertificate=yes;"
     )
     return conn

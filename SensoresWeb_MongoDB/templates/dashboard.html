@@ -1,106 +1,106 @@
-<!DOCTYPE html>
-<html>
+{% extends 'base.html' %}
+{% set active = 'dashboard' %}
 
-<head>
-    <meta charset="utf-8">
-    <title>Dashboard de Sensores</title>
+{% block title %}Dashboard — Sistema de Riego{% endblock %}
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='styles.css') }}">
-</head>
+{% block page_title %}📋 Lecturas en Tiempo Real{% endblock %}
+{% block page_subtitle %}Datos desde MongoDB Atlas · actualización cada 5 segundos{% endblock %}
 
-<body>
+{% block content %}
 
-    <div class="container">
-
-        <h2>Datos de Sensores</h2>
-
-        <table id="tabla">
-
-            <thead>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Temp DHT</th>
-                    <th>Humedad</th>
-                    <th>Temp BMP</th>
-                    <th>Presión (hPa)</th>
-                    <th>Luz (lux)</th>
-                </tr>
-            </thead>
-
-            <tbody></tbody>
-
-        </table>
-
-        <button onclick="window.location.href='/logout'">
-            Cerrar sesión
-        </button>
-
-        <a href="{{ url_for('views.graficos') }}"
-           class="btn">
-            📈 Ver Gráficos
-        </a>
-
+  <!-- Cards de métricas -->
+  <div class="card-grid">
+    <div class="metric-card metric-temp">
+      <div class="metric-label">🌡️ Temperatura DHT</div>
+      <div class="metric-value" id="metric-temp">--</div>
+      <div class="metric-unit">°C</div>
     </div>
+    <div class="metric-card metric-hum">
+      <div class="metric-label">💧 Humedad</div>
+      <div class="metric-value" id="metric-hum">--</div>
+      <div class="metric-unit">%</div>
+    </div>
+    <div class="metric-card metric-pres">
+      <div class="metric-label">🌬️ Presión</div>
+      <div class="metric-value" id="metric-pres">--</div>
+      <div class="metric-unit">hPa</div>
+    </div>
+    <div class="metric-card metric-luz">
+      <div class="metric-label">💡 Luz</div>
+      <div class="metric-value" id="metric-luz">--</div>
+      <div class="metric-unit">lux</div>
+    </div>
+  </div>
 
-    <script>
+  <!-- Tabla de lecturas -->
+  <div class="card">
+    <div class="card-header">Tabla de lecturas</div>
+    <div class="card-body">
+      <table id="tabla">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Temp DHT</th>
+            <th>Humedad</th>
+            <th>Temp BMP</th>
+            <th>Presión (hPa)</th>
+            <th>Luz (lux)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
 
-        async function cargarDatos() {
+  <!-- Acciones rápidas -->
+  <div class="action-bar">
+    <a href="{{ url_for('views.graficos') }}" class="btn btn-primary">📈 Ver Gráficos</a>
+    <a href="{{ url_for('views.analisis') }}" class="btn btn-success">🔬 Ver Análisis SQL</a>
+  </div>
 
-            try {
+  <script>
+    async function cargarDatos() {
+      try {
+        const res = await fetch('/api/datos');
+        if (!res.ok) {
+          console.error('Error en /api/datos', res.status);
+          return;
+        }
+        const datos = await res.json();
 
-                const res = await fetch('/api/datos');
-
-                if (!res.ok) {
-                    console.error(
-                        'Error en /api/datos',
-                        res.status
-                    );
-                    return;
-                }
-
-                const datos = await res.json();
-
-                const tbody =
-                    document.querySelector('#tabla tbody');
-
-                tbody.innerHTML = '';
-
-                datos.forEach(fila => {
-
-                    const tr =
-                        document.createElement('tr');
-
-                    tr.innerHTML = `
-                        <td>${fila.fecha}</td>
-                        <td>${fila.temp_dht}</td>
-                        <td>${fila.humedad}</td>
-                        <td>${fila.temp_bmp}</td>
-                        <td>${fila.presion}</td>
-                        <td>${fila.luz}</td>
-                    `;
-
-                    tbody.appendChild(tr);
-
-                });
-
-            } catch (err) {
-
-                console.error(
-                    'Error al cargar datos:',
-                    err
-                );
-
-            }
-
+        if (datos.length > 0) {
+          const ultimo = datos[0];
+          document.getElementById('metric-temp').textContent =
+            ultimo.temp_dht !== null ? parseFloat(ultimo.temp_dht).toFixed(1) : '--';
+          document.getElementById('metric-hum').textContent =
+            ultimo.humedad !== null ? parseFloat(ultimo.humedad).toFixed(1) : '--';
+          document.getElementById('metric-pres').textContent =
+            ultimo.presion !== null ? parseFloat(ultimo.presion).toFixed(1) : '--';
+          document.getElementById('metric-luz').textContent =
+            ultimo.luz !== null ? parseFloat(ultimo.luz).toFixed(0) : '--';
         }
 
-        cargarDatos();
+        const tbody = document.querySelector('#tabla tbody');
+        tbody.innerHTML = '';
+        datos.forEach(fila => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${fila.fecha}</td>
+            <td class="mono">${fila.temp_dht}</td>
+            <td class="mono">${fila.humedad}</td>
+            <td class="mono">${fila.temp_bmp}</td>
+            <td class="mono">${fila.presion}</td>
+            <td class="mono">${fila.luz}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Error al cargar datos:', err);
+      }
+    }
 
-        setInterval(cargarDatos, 5000);
+    cargarDatos();
+    setInterval(cargarDatos, 5000);
+  </script>
 
-    </script>
-
-</body>
-
-</html>
+{% endblock %}
