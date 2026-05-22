@@ -12,6 +12,9 @@ from utils.sql_server import (
     get_sql_server_connection
 )
 
+ID_DISPOSITIVO = 1  # Arduino Norte (matches SQL dispositivos.id)
+ID_ZONA = 1  # Zona A Tomate (matches SQL zonas_riego.id)
+
 arduino = serial.Serial(
 
     Config.ARDUINO_PORT,
@@ -78,6 +81,8 @@ while True:
                     """
                     INSERT INTO lecturas
                     (
+                        id_dispositivo,
+                        id_zona,
                         fecha,
                         temp_dht,
                         humedad,
@@ -86,10 +91,12 @@ while True:
                         luz
                     )
 
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
 
                     (
+                        ID_DISPOSITIVO,
+                        ID_ZONA,
                         lectura["fecha"],
                         lectura["temp_dht"],
                         lectura["humedad"],
