@@ -14,4 +14,8 @@ usuarios_collection = db["usuarios"]
 
 lecturas_collection = db["lecturas"]
 
+configuraciones_collection = db["configuraciones"]
+
+alertas_collection = db["alertas"]
+
 print("MongoDB Atlas conectado correctamente")

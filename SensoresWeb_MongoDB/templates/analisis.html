@@ -25,6 +25,44 @@
             align-items: center;
             margin-bottom: 0.8rem;
         }
+
+        .seccion-mongo {
+            border: 2px solid #e67e22;
+            border-radius: 6px;
+            padding: 1rem 1.2rem;
+            background-color: #fef9f4;
+        }
+
+        .seccion-mongo h3 {
+            color: #d35400;
+        }
+
+        .badge-mongo {
+            display: inline-block;
+            background-color: #e67e22;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: bold;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+            letter-spacing: 0.04em;
+        }
+
+        .nivel-critico {
+            color: #c0392b;
+            font-weight: bold;
+        }
+
+        .nivel-advertencia {
+            color: #e67e22;
+            font-weight: bold;
+        }
+
+        .nivel-normal {
+            color: #27ae60;
+        }
     </style>
 </head>
 
@@ -94,7 +132,7 @@
         <!-- -------------------------------------------------- -->
         <div class="seccion">
 
-            <h3>Lecturas por Zona</h3>
+            <h3>Lecturas por Zona (SQL Server)</h3>
 
             <div class="fila-controles">
 
@@ -121,6 +159,38 @@
                         <th>Temp BMP</th>
                         <th>Presión</th>
                         <th>Luz</th>
+                    </tr>
+                </thead>
+
+                <tbody></tbody>
+
+            </table>
+
+        </div>
+
+        <!-- -------------------------------------------------- -->
+        <!-- Sección 4: Log de Alertas (MongoDB)                 -->
+        <!-- -------------------------------------------------- -->
+        <div class="seccion seccion-mongo">
+
+            <h3>
+                Log de Alertas
+                <span class="badge-mongo">desde MongoDB</span>
+            </h3>
+
+            <p style="color:#888;font-size:0.9rem;margin-top:0;margin-bottom:0.8rem;">
+                Últimas 20 alertas registradas en MongoDB Atlas — complementa los datos de SQL Server.
+            </p>
+
+            <table id="tabla-alertas">
+
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Zona</th>
+                        <th>Variable</th>
+                        <th>Valor Medido</th>
+                        <th>Estado</th>
                     </tr>
                 </thead>
 
@@ -275,8 +345,67 @@
 
         }
 
+        // --------------------------------------------------
+        // Cargar alertas de MongoDB al iniciar la página
+        // --------------------------------------------------
+        async function cargarAlertas() {
+
+            try {
+
+                const res = await fetch('/api/mongo/alertas');
+
+                if (!res.ok) {
+                    console.error('Error en /api/mongo/alertas', res.status);
+                    return;
+                }
+
+                const datos = await res.json();
+
+                const tbody = document.querySelector(
+                    '#tabla-alertas tbody'
+                );
+
+                tbody.innerHTML = '';
+
+                if (!datos.length) {
+                    tbody.innerHTML =
+                        '<tr><td colspan="5" style="text-align:center;color:#aaa;">Sin alertas registradas</td></tr>';
+                    return;
+                }
+
+                datos.forEach(alerta => {
+
+                    const tr = document.createElement('tr');
+
+                    const nivelClass = alerta.nivel === 'critico'
+                        ? 'nivel-critico'
+                        : alerta.nivel === 'advertencia'
+                            ? 'nivel-advertencia'
+                            : 'nivel-normal';
+
+                    tr.innerHTML = `
+                        <td>${alerta.fecha}</td>
+                        <td>${alerta.zona}</td>
+                        <td>${alerta.variable}</td>
+                        <td>${alerta.valor_medido}</td>
+                        <td class="${nivelClass}">${alerta.nivel}</td>
+                    `;
+
+                    tbody.appendChild(tr);
+
+                });
+
+            } catch (err) {
+
+                console.error('Error al cargar alertas:', err);
+
+            }
+
+        }
+
         // Inicializar
         cargarResumen();
+        cargarAlertas();
 
     </script>
 
