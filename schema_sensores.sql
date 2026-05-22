@@ -13,8 +13,11 @@
 -- 1. CREACION DE LA BASE DE DATOS
 -- ------------------------------------------------------------
 
-IF EXISTS (SELECT * FROM sys.databases WHERE name = 'sensores')
+IF EXISTS (SELECT 1 FROM sys.databases WHERE name = 'sensores')
+BEGIN
+    ALTER DATABASE sensores SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
     DROP DATABASE sensores;
+END
 GO
 
 CREATE DATABASE sensores;
@@ -142,7 +145,7 @@ VALUES
     (1, 'temp_dht', 18.0, 30.0, 1),
 
     -- Zona B - Lechuga
-    (2, 'humedad',  60.0, 80.0, 1),
+    (2, 'humedad',  60.0, 70.0, 1),
     (2, 'temp_dht', 15.0, 25.0, 1),
 
     -- Zona C - Pimiento
@@ -263,4 +266,14 @@ INNER JOIN dispositivos d ON l.id_dispositivo = d.id
 GROUP BY d.id, d.nombre
 HAVING AVG(l.temp_dht) > (SELECT AVG(temp_dht) FROM lecturas)
 ORDER BY prom_temp_dispositivo DESC;
+GO
+
+-- 5.5 Lecturas fuera de rango (subconsulta con umbrales)
+SELECT l.id, z.nombre AS zona, l.humedad, u.valor_min, u.valor_max,
+       CASE WHEN l.humedad < u.valor_min THEN 'BAJO MINIMO'
+            WHEN l.humedad > u.valor_max THEN 'SOBRE MAXIMO'
+            ELSE 'EN RANGO' END AS estado
+FROM lecturas l
+JOIN umbrales_alerta u ON l.id_zona = u.id_zona AND u.variable = 'humedad'
+JOIN zonas_riego z ON l.id_zona = z.id;
 GO
